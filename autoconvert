@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#Only allow this process to be run one at a time so that we don't overload the CPU
+if [ -f /tmp/autoconvert.pid ]; then
+        echo "/tmp/autoconvert.pid exits. Exiting."
+        exit 1
+fi
+
+echo $$ > /tmp/autoconvert.pid
+
+finalize() {
+        rm -f /tmp/autoconvert.pid
+}
+
+trap finalize SIGINT
+
+FILE=`ls /home/joeljohnson/share/unsorted/ | head -n 1`
+FILEPATH="/home/joeljohnson/share/unsorted/$FILE"
+if [ $FILE == "" ]; then
+        echo "Nothing to convert."
+        exit 0
+fi
+FILENAME_EXT=`basename $FILE`
+FILENAME="${FILENAME_EXT%.*}"
+SHOW="${FILENAME%%-*}"
+OUTPUT=/home/joeljohnson/share/TV/$SHOW/$FILENAME.m4v
+
+echo "Converting $FILEPATH to $OUTPUT"
+echo "Show is $SHOW"
+
+HandBrakeCLI --input "$FILEPATH" --output "$OUTPUT" -Z --optimize "Normal"
+if [ $? == "0" ]; then
+        chown joeljohnson:joeljohnson $OUTPUT
+        mv $FILE /home/joeljohnson/share/converted/
+fi
